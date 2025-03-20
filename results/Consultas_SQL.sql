@@ -17,8 +17,10 @@ where a.actor_id between 30 and 40;
 /*
  * 4. Obtén las películas cuyo idioma coincide con el idioma original.
  */
-select distinct f.original_language_id --f.title as "nombre_pelicula" 
-from film f;
+select distinct f.title as "nombre_pelicula" 
+from film f
+inner join language l on f.language_id=l.language_id
+where f.original_language_id is not null;
 --No se puede realizar este ejercicio porque el valor del campo original_language_id es nulo
 --Si no tendría que hacer un inner join contra la tabla language y cruzar por language_id y original_language_id
 
@@ -37,7 +39,7 @@ apellido.
  */
 select concat(a.first_name , ' ', a.last_name) as "nombre_completo_actor" 
 from actor a 
-where a.last_name='ALLEN';
+where a.last_name like '%ALLEN%';
 
 
 /*
@@ -78,7 +80,10 @@ from film f;
  * 11. Encuentra lo que costó el antepenúltimo alquiler ordenado por día.
  */
 select r.rental_id as "Alquiler", p.amount as "Coste"
-from film f;
+from rental r 
+inner join payment p on r.rental_id=p.rental_id
+order by r.rental_date desc limit 1 offset 2;
+
 
 
 /*
@@ -247,8 +252,8 @@ inner join film f on i.film_id = f.film_id;
  * 28. Muestra el id de los actores que hayan participado en más de 40
 películas.
  */
-SELECT fa.actor_id as "actores_mas40_pelis"
-FROM film_actor fa
+select fa.actor_id as "actores_mas40_pelis"
+from film_actor fa
 group by fa.actor_id
 having count(fa.actor_id) > 40
 order by fa.actor_id;
@@ -258,11 +263,12 @@ order by fa.actor_id;
  * 29. Obtener todas las películas y, si están disponibles en el inventario,
 mostrar la cantidad disponible.
  */
-select f.title AS "nombre_pelicula","count_pelis"."Numero_pelis"
+select f.title AS "Nombre_pelicula",
+coalesce("count_pelis"."Cantidad_pelis", 0)
 from film f 
-inner join (
-SELECT count(i.film_id) as "Numero_pelis", i.film_id
-FROM inventory i 
+left join (
+select count(i.film_id) as "Cantidad_pelis", i.film_id
+from inventory i 
 group by i.film_id) as "count_pelis"
 on f.film_id =count_pelis.film_id;
 
@@ -274,8 +280,8 @@ select concat(a.first_name , ' ', a.last_name) as "nombre_completo_actor" ,
 "count_pelis"."Numero_pelis"
 from actor a  
 inner join (
-SELECT count(fa.film_id) as "Numero_pelis", fa.actor_id 
-FROM film_actor fa 
+select count(fa.film_id) as "Numero_pelis", fa.actor_id 
+from film_actor fa 
 group by fa.actor_id ) as "count_pelis"
 on a.actor_id =count_pelis.actor_id
 order by "count_pelis"."Numero_pelis";
@@ -366,7 +372,7 @@ from actor a;
  */
 select *
 from actor a
-order by a.last_name desc;
+order by a.last_name asc;
 
 
 /*
@@ -418,7 +424,7 @@ left join rental r on r.customer_id =c.customer_id
  * Deja después de la consulta la contestación.
  */
 select count(*)
-from film_category fc 
+from film f 
 cross join category c
 /*
  * Al hacer un CROSS JOIN sin una condición que lo limite, va a generar todas las combinaciones posibles entre
@@ -454,7 +460,7 @@ select concat(a.first_name,' ',a.last_name) as "Actor",
        count(fa.film_id) as "Numero_peliculas"
 from actor a
 left join film_actor fa on a.actor_id = fa.actor_id
-group by a.actor_id
+group by a.actor_id, a.first_name, a.last_name
 order by "Numero_peliculas";
 
 
@@ -467,7 +473,7 @@ select concat(a.first_name,' ',a.last_name) as "Actor",
        count(fa.film_id) as "Numero_peliculas"
 from actor a
 left join film_actor fa on a.actor_id = fa.actor_id
-group by a.actor_id
+group by a.actor_id, a.first_name, a.last_name
 order by "Numero_peliculas";
 
 select * from "actor_num_peliculas";
@@ -480,7 +486,7 @@ select count(r.rental_id) as "Todos_alquileres",
 concat(c.first_name,' ',c.last_name) as "Clientes"
 from rental r 
 inner join customer c on r.customer_id =c.customer_id
-group by "Clientes"
+group by c.first_name, c.last_name
 order by "Todos_alquileres";
 
 
@@ -604,7 +610,7 @@ select f.title as "Peliculas"
 from rental r 
 inner join inventory i on r.inventory_id =i.inventory_id
 inner join film f on i.film_id = f.film_id
-where extract(day inner (r.return_date - r.rental_date)) > 8
+where extract(day from (r.return_date - r.rental_date)) > 8
 order by "Peliculas";
 
 
@@ -687,6 +693,6 @@ select c.customer_id, concat(c.first_name, ' ', c.last_name) as "Nombre_Cliente"
 count(r.rental_id) as "Recuento_alquiler"
 from customer c 
 inner join rental r on c.customer_id= r.customer_id 
-group by c.customer_id, "Nombre_Cliente"
+group by c.customer_id, c.first_name, c.last_name
 order by c.customer_id
 
